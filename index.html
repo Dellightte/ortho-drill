@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orthopaedic Instrument Drill</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; }
+  #app { width: 100%; max-width: 540px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .header-left h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+  .header-left p { font-size: 13px; color: #888; margin-top: 2px; }
+  .score-right { text-align: right; }
+  .score-num { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .score-sub { font-size: 12px; color: #999; }
+  .progress-wrap { height: 4px; background: #e5e5e5; border-radius: 2px; margin-bottom: 14px; }
+  .progress-fill { height: 4px; background: #1D9E75; border-radius: 2px; transition: width 0.3s; }
+  .streak-row { display: flex; gap: 5px; margin-bottom: 14px; flex-wrap: wrap; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: #e5e5e5; }
+  .dot.ok { background: #1D9E75; }
+  .dot.miss { background: #E24B4A; }
+  .mode-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab { font-size: 13px; padding: 6px 16px; border-radius: 100px; border: 1px solid #ddd; background: transparent; cursor: pointer; color: #666; }
+  .tab.on { background: #1a1a1a; color: #fff; border-color: #1a1a1a; font-weight: 500; }
+  .card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+
+  /* Image question: big SVG, text options */
+  .big-img-wrap { background: #f9f9f7; display: flex; align-items: center; justify-content: center; height: 210px; position: relative; }
+  .big-img-wrap svg { max-height: 185px; max-width: 85%; }
+  .cat-pill { position: absolute; top: 10px; right: 12px; font-size: 11px; padding: 3px 10px; border-radius: 100px; background: #E1F5EE; color: #0F6E56; font-weight: 600; }
+  .body { padding: 16px 18px; }
+  .q-label { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+  .q-text { font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 14px; line-height: 1.4; }
+  .q-fn { font-size: 13px; color: #666; margin-bottom: 14px; line-height: 1.5; }
+  .text-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .text-opt { text-align: left; padding: 11px 13px; border: 1px solid #e0e0e0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 13.5px; color: #1a1a1a; line-height: 1.3; transition: background 0.1s; }
+  .text-opt:hover:not(:disabled) { background: #f5f5f3; }
+  .text-opt.right { background: #E1F5EE; border-color: #0F6E56; color: #085041; font-weight: 500; }
+  .text-opt.wrong { background: #FCEBEB; border-color: #A32D2D; color: #501313; }
+
+  /* Name question: text card, image grid */
+  .q-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+  .img-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+  .img-opt { border: 2px solid #e0e0e0; border-radius: 12px; background: #f9f9f7; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 140px; position: relative; transition: border-color 0.12s; padding: 8px; }
+  .img-opt:hover:not(.locked) { border-color: #999; background: #f0f0ee; }
+  .img-opt svg { max-height: 118px; max-width: 90%; }
+  .img-opt.right { border-color: #0F6E56; background: #E1F5EE; }
+  .img-opt.wrong { border-color: #A32D2D; background: #FCEBEB; }
+  .img-tick { position: absolute; bottom: 6px; right: 8px; font-size: 12px; font-weight: 700; }
+  .img-opt.right .img-tick { color: #0F6E56; }
+  .img-opt.wrong .img-tick { color: #A32D2D; }
+
+  .feedback { margin-top: 12px; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; }
+  .feedback.right { background: #E1F5EE; color: #085041; }
+  .feedback.wrong { background: #FCEBEB; color: #501313; }
+  .next-btn { margin-top: 10px; width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; color: #1a1a1a; font-weight: 500; }
+  .next-btn:hover { background: #f5f5f3; }
+  .done-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 16px; padding: 40px 24px; text-align: center; }
+  .done-big { font-size: 48px; font-weight: 700; color: #1a1a1a; }
+  .done-pct { font-size: 14px; color: #999; margin: 4px 0 8px; }
+  .done-msg { font-size: 15px; color: #444; margin-bottom: 24px; }
+  .restart { padding: 11px 30px; border: 1px solid #ddd; border-radius: 10px; background: transparent; cursor: pointer; font-size: 14px; color: #1a1a1a; font-weight: 500; }
+  .restart:hover { background: #f5f5f3; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─── SVG illustrations for each instrument ───────────────────────────────────
+const SVG = {
+  "Osteotome": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="140" height="12" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <polygon points="150,34 180,40 150,46" fill="#a0a0a0" stroke="#777" stroke-width="1"/>
+    <rect x="10" y="30" width="30" height="20" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Osteotome</text>
+  </svg>`,
+
+  "Bone-Cutting Forceps": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="25" x2="110" y2="42" stroke="#999" stroke-width="8" stroke-linecap="round"/>
+    <line x1="20" y1="65" x2="110" y2="48" stroke="#999" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="20" cy="25" rx="10" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <ellipse cx="20" cy="65" rx="10" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <polygon points="110,36 140,44 110,52" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="60" cy="45" r="5" fill="#666" stroke="#444" stroke-width="1"/>
+    <text x="100" y="82" text-anchor="middle" font-size="9" fill="#555">Bone-Cutting Forceps</text>
+  </svg>`,
+
+  "Chisel": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="35" width="140" height="10" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <polygon points="152,35 178,40 152,45" fill="#a0a0a0" stroke="#777" stroke-width="1"/>
+    <rect x="12" y="31" width="28" height="18" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Chisel (single bevel)</text>
+  </svg>`,
+
+  "Gouge": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="12" y="35" width="135" height="10" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <path d="M147,35 Q178,40 147,45" fill="#a8a8a8" stroke="#777" stroke-width="1"/>
+    <rect x="12" y="31" width="28" height="18" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Gouge (curved chisel)</text>
+  </svg>`,
+
+  "Mallet": `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="10" width="55" height="35" rx="6" fill="#8B6914" stroke="#6b5010" stroke-width="1.5"/>
+    <rect x="42" y="45" width="11" height="50" rx="3" fill="#a07820" stroke="#6b5010" stroke-width="1"/>
+    <text x="100" y="92" text-anchor="middle" font-size="9" fill="#555">Mallet</text>
+  </svg>`,
+
+  "Bone Rongeur": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="22" x2="120" y2="40" stroke="#aaa" stroke-width="7" stroke-linecap="round"/>
+    <line x1="15" y1="68" x2="120" y2="50" stroke="#aaa" stroke-width="7" stroke-linecap="round"/>
+    <rect x="5" y="15" width="20" height="14" rx="3" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <rect x="5" y="61" width="20" height="14" rx="3" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <path d="M120,36 Q145,45 120,54 Z" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="70" cy="45" r="5" fill="#666" stroke="#444" stroke-width="1"/>
+    <text x="100" y="82" text-anchor="middle" font-size="9" fill="#555">Bone Rongeur</text>
+  </svg>`,
+
+  "Saw": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="60" y="28" width="100" height="24" rx="4" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <path d="M60,28 L60,52 L10,52 L10,42 Q35,40 10,28 Z" fill="#888" stroke="#666" stroke-width="1"/>
+    <path d="M160,32 L165,28 L170,32 L175,28 L180,32 L185,28 L190,32" stroke="#666" stroke-width="1.5" fill="none"/>
+    <text x="100" y="72" text-anchor="middle" font-size="9" fill="#555">Saw</text>
+  </svg>`,
+
+  "Shears": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="20" x2="170" y2="42" stroke="#bbb" stroke-width="9" stroke-linecap="round"/>
+    <line x1="20" y1="70" x2="170" y2="48" stroke="#bbb" stroke-width="9" stroke-linecap="round"/>
+    <ellipse cx="22" cy="20" rx="12" ry="8" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <ellipse cx="22" cy="70" rx="12" ry="8" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <circle cx="90" cy="45" r="6" fill="#888" stroke="#555" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Shears</text>
+  </svg>`,
+
+  "Plate Bender": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="15" y="20" width="50" height="50" rx="5" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="135" y="20" width="50" height="50" rx="5" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="55" y="38" width="90" height="14" rx="3" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <path d="M55,38 Q100,20 145,38" fill="none" stroke="#888" stroke-width="3"/>
+    <text x="100" y="84" text-anchor="middle" font-size="9" fill="#555">Plate Bender</text>
+  </svg>`,
+
+  "Bone Holding Forceps": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="20" x2="130" y2="40" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <line x1="15" y1="70" x2="130" y2="50" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="17" cy="20" rx="11" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <ellipse cx="17" cy="70" rx="11" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="128" y="34" width="16" height="12" rx="3" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="75" cy="45" r="5" fill="#777" stroke="#555" stroke-width="1"/>
+    <line x1="128" y1="40" x2="175" y2="40" stroke="#888" stroke-width="3"/>
+    <line x1="128" y1="50" x2="175" y2="50" stroke="#888" stroke-width="3"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Bone Holding Forceps</text>
+  </svg>`,
+
+  "Clamp": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="22" x2="150" y2="40" stroke="#bbb" stroke-width="8" stroke-linecap="round"/>
+    <line x1="20" y1="68" x2="150" y2="50" stroke="#bbb" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="22" cy="22" rx="10" ry="7" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <ellipse cx="22" cy="68" rx="10" ry="7" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <path d="M150,36 L175,45 L150,54 Z" fill="#999" stroke="#777" stroke-width="1"/>
+    <circle cx="80" cy="45" r="5" fill="#888" stroke="#666" stroke-width="1"/>
+    <rect x="76" y="40" width="8" height="10" rx="1" fill="#666" stroke="#444" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Clamp</text>
+  </svg>`,
+
+  "Wire Bender": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="30" width="100" height="20" rx="5" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <path d="M110,40 Q140,20 165,40 Q140,60 110,40" fill="none" stroke="#888" stroke-width="3"/>
+    <rect x="60" y="34" width="14" height="12" rx="3" fill="#888" stroke="#666" stroke-width="1"/>
+    <text x="100" y="72" text-anchor="middle" font-size="9" fill="#555">Wire Bender</text>
+  </svg>`,
+
+  "Screwdriver": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="28" width="35" height="24" rx="8" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="45" y="35" width="110" height="10" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <rect x="155" y="37" width="20" height="6" rx="1" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <line x1="165" y1="37" x2="165" y2="43" stroke="#777" stroke-width="1.5"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Screwdriver</text>
+  </svg>`,
+
+  "Impactor": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="30" width="40" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1.5"/>
+    <rect x="50" y="34" width="105" height="12" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="155" y="28" width="25" height="24" rx="4" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Impactor</text>
+  </svg>`,
+
+  "Cup Pusher": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="32" width="35" height="16" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="45" y="36" width="100" height="8" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <path d="M145,28 Q175,40 145,52 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Cup Pusher</text>
+  </svg>`,
+
+  "Pliers": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="25" x2="130" y2="40" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <line x1="15" y1="65" x2="130" y2="50" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="17" cy="25" rx="11" ry="8" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <ellipse cx="17" cy="65" rx="11" ry="8" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="128" y="33" width="30" height="14" rx="2" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="75" cy="45" r="5" fill="#777" stroke="#555" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Pliers</text>
+  </svg>`,
+
+  "Driver": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="28" width="35" height="24" rx="8" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="45" y="35" width="120" height="10" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <polygon points="165,33 185,40 165,47" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Driver</text>
+  </svg>`,
+
+  "Drill": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="30" width="60" height="40" rx="8" fill="#444" stroke="#222" stroke-width="1.5"/>
+    <rect x="60" y="38" width="80" height="14" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="140" y="40" width="40" height="10" rx="2" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <rect x="25" y="70" width="30" height="10" rx="3" fill="#333" stroke="#111" stroke-width="1"/>
+    <text x="100" y="85" text-anchor="middle" font-size="9" fill="#555">Drill</text>
+  </svg>`,
+
+  "Chuck": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="28" width="35" height="24" rx="8" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="45" y="35" width="70" height="10" rx="2" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <rect x="115" y="30" width="25" height="20" rx="3" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <line x1="120" y1="30" x2="120" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="128" y1="30" x2="128" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="136" y1="30" x2="136" y2="50" stroke="#888" stroke-width="1"/>
+    <rect x="140" y="37" width="35" height="6" rx="1" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Chuck</text>
+  </svg>`,
+
+  "Pin Chuck": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="30" width="28" height="20" rx="6" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="38" y="36" width="65" height="8" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="103" y="32" width="20" height="16" rx="3" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <line x1="123" y1="37" x2="175" y2="37" stroke="#bbb" stroke-width="3"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Pin Chuck</text>
+  </svg>`,
+
+  "Retractor": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="35" width="100" height="10" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="31" width="22" height="18" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M110,28 Q140,40 110,52 L110,52 L110,28 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <path d="M140,28 Q170,40 140,52 L140,52 L140,28 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="82" text-anchor="middle" font-size="9" fill="#555">Retractor</text>
+  </svg>`,
+
+  "Bone Lever": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="130" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="25" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M140,30 Q170,40 140,50 L155,40 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Bone Lever</text>
+  </svg>`,
+
+  "Hook": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="36" width="90" height="8" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="32" width="22" height="16" rx="4" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M100,40 L140,40 Q165,40 165,60 Q165,75 148,75 L140,75" fill="none" stroke="#aaa" stroke-width="7" stroke-linecap="round"/>
+    <text x="100" y="85" text-anchor="middle" font-size="9" fill="#555">Hook</text>
+  </svg>`,
+
+  "Elevator": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="115" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="28" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M125,28 L160,40 L125,52 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Elevator</text>
+  </svg>`,
+
+  "Rugine": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="115" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="28" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M125,32 L160,32 L160,48 L125,48 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <path d="M125,32 L160,32 L160,35 L125,35 Z" fill="#888" stroke="#666" stroke-width="0"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Rugine / Raspatory</text>
+  </svg>`,
+
+  "Spreader": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="45" x2="100" y2="30" stroke="#bbb" stroke-width="8" stroke-linecap="round"/>
+    <line x1="20" y1="45" x2="100" y2="60" stroke="#bbb" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="22" cy="45" rx="10" ry="7" fill="#ccc" stroke="#888" stroke-width="1"/>
+    <line x1="100" y1="30" x2="170" y2="20" stroke="#aaa" stroke-width="5" stroke-linecap="round"/>
+    <line x1="100" y1="60" x2="170" y2="70" stroke="#aaa" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="70" cy="45" r="5" fill="#888" stroke="#666" stroke-width="1"/>
+    <text x="100" y="85" text-anchor="middle" font-size="9" fill="#555">Spreader</text>
+  </svg>`,
+
+  "Dissecting Forceps": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="90" y1="45" x2="175" y2="25" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="45" x2="175" y2="65" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="10" y1="25" x2="90" y2="45" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="10" y1="65" x2="90" y2="45" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="90" cy="45" r="5" fill="#888" stroke="#666" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Dissecting Forceps</text>
+  </svg>`,
+
+  "Curette": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="35" width="110" height="10" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="31" width="25" height="18" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M120,32 Q155,40 120,48 Q120,48 115,40 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Curette</text>
+  </svg>`,
+
+  "Rasp": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="110" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="25" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="120" y="30" width="55" height="20" rx="3" fill="#aaa" stroke="#888" stroke-width="1"/>
+    <line x1="125" y1="30" x2="125" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="132" y1="30" x2="132" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="139" y1="30" x2="139" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="146" y1="30" x2="146" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="153" y1="30" x2="153" y2="50" stroke="#888" stroke-width="1"/>
+    <line x1="160" y1="30" x2="160" y2="50" stroke="#888" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Rasp</text>
+  </svg>`,
+
+  "File": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="110" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="25" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="120" y="32" width="65" height="16" rx="2" fill="#aaa" stroke="#888" stroke-width="1"/>
+    <line x1="124" y1="32" x2="124" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="130" y1="32" x2="130" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="136" y1="32" x2="136" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="142" y1="32" x2="142" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="148" y1="32" x2="148" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="154" y1="32" x2="154" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="160" y1="32" x2="160" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="166" y1="32" x2="166" y2="48" stroke="#999" stroke-width="0.8"/>
+    <line x1="172" y1="32" x2="172" y2="48" stroke="#999" stroke-width="0.8"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">File</text>
+  </svg>`,
+
+  "Scoop": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="110" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="25" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M120,32 Q160,32 165,40 Q160,48 120,48 Z" fill="#aaa" stroke="#888" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Scoop</text>
+  </svg>`,
+
+  "Extractor": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="100" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="28" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <path d="M110,40 Q130,25 155,30 L155,35 Q138,31 125,40 Q138,49 155,45 L155,50 Q130,55 110,40 Z" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Extractor</text>
+  </svg>`,
+
+  "Wire Cutter": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="22" x2="140" y2="42" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <line x1="15" y1="68" x2="140" y2="48" stroke="#aaa" stroke-width="8" stroke-linecap="round"/>
+    <ellipse cx="17" cy="22" rx="11" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <ellipse cx="17" cy="68" rx="11" ry="7" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <path d="M140,38 L165,42 L140,46 Z" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="80" cy="45" r="5" fill="#777" stroke="#555" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Wire Cutter</text>
+  </svg>`,
+
+  "Mole Grip": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="25" x2="130" y2="40" stroke="#aaa" stroke-width="9" stroke-linecap="round"/>
+    <line x1="15" y1="65" x2="130" y2="50" stroke="#aaa" stroke-width="9" stroke-linecap="round"/>
+    <ellipse cx="17" cy="25" rx="11" ry="8" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <ellipse cx="17" cy="65" rx="11" ry="8" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="127" y="33" width="20" height="14" rx="2" fill="#888" stroke="#666" stroke-width="1"/>
+    <circle cx="78" cy="45" r="6" fill="#777" stroke="#444" stroke-width="2"/>
+    <line x1="147" y1="40" x2="165" y2="40" stroke="#888" stroke-width="5" stroke-linecap="round"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Mole Grip</text>
+  </svg>`,
+
+  "Gauge": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="34" width="100" height="12" rx="3" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <rect x="10" y="30" width="25" height="20" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="110" y="30" width="70" height="20" rx="3" fill="#e8e8e8" stroke="#aaa" stroke-width="1"/>
+    <line x1="120" y1="30" x2="120" y2="50" stroke="#aaa" stroke-width="1"/>
+    <line x1="130" y1="30" x2="130" y2="50" stroke="#aaa" stroke-width="1"/>
+    <line x1="140" y1="28" x2="140" y2="52" stroke="#888" stroke-width="1.5"/>
+    <line x1="150" y1="30" x2="150" y2="50" stroke="#aaa" stroke-width="1"/>
+    <line x1="160" y1="30" x2="160" y2="50" stroke="#aaa" stroke-width="1"/>
+    <line x1="170" y1="30" x2="170" y2="50" stroke="#aaa" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Gauge</text>
+  </svg>`,
+
+  "Ruler": `<svg viewBox="0 0 200 70" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="28" width="170" height="18" rx="2" fill="#e8e8e8" stroke="#aaa" stroke-width="1"/>
+    <line x1="20" y1="28" x2="20" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="30" y1="33" x2="30" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="40" y1="28" x2="40" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="50" y1="33" x2="50" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="60" y1="28" x2="60" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="70" y1="33" x2="70" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="80" y1="28" x2="80" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="90" y1="33" x2="90" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="100" y1="28" x2="100" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="110" y1="33" x2="110" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="120" y1="28" x2="120" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="130" y1="33" x2="130" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="140" y1="28" x2="140" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="150" y1="33" x2="150" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="160" y1="28" x2="160" y2="46" stroke="#aaa" stroke-width="1"/>
+    <line x1="170" y1="33" x2="170" y2="46" stroke="#aaa" stroke-width="0.8"/>
+    <text x="100" y="62" text-anchor="middle" font-size="9" fill="#555">Ruler</text>
+  </svg>`,
+
+  "Probe": `<svg viewBox="0 0 200 70" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="30" width="25" height="15" rx="5" fill="#8B6914" stroke="#6b5010" stroke-width="1"/>
+    <rect x="35" y="33" width="130" height="9" rx="2" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <circle cx="170" cy="37" r="5" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="60" text-anchor="middle" font-size="9" fill="#555">Probe</text>
+  </svg>`,
+
+  "Bohler Stirrup": `<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M40,20 L160,20 L160,28 L100,70 L40,28 Z" fill="#bbb" stroke="#888" stroke-width="1.5"/>
+    <rect x="95" y="68" width="10" height="25" rx="2" fill="#aaa" stroke="#888" stroke-width="1"/>
+    <rect x="75" y="90" width="50" height="6" rx="3" fill="#888" stroke="#666" stroke-width="1"/>
+    <text x="100" y="103" text-anchor="middle" font-size="9" fill="#555">Bohler Stirrup</text>
+  </svg>`,
+
+  "Suture Scissors": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="90" y1="45" x2="180" y2="25" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="45" x2="180" y2="65" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="25" cy="25" rx="18" ry="12" fill="none" stroke="#aaa" stroke-width="5"/>
+    <ellipse cx="25" cy="65" rx="18" ry="12" fill="none" stroke="#aaa" stroke-width="5"/>
+    <line x1="33" y1="20" x2="90" y2="42" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="33" y1="70" x2="90" y2="48" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="90" cy="45" r="5" fill="#888" stroke="#666" stroke-width="1"/>
+    <text x="100" y="83" text-anchor="middle" font-size="9" fill="#555">Suture Scissors</text>
+  </svg>`,
+
+  "Forceps": `<svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+    <line x1="90" y1="45" x2="175" y2="22" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="45" x2="175" y2="68" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="10" y1="22" x2="90" y2="45" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <line x1="10" y1="68" x2="90" y2="45" stroke="#bbb" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="90" cy="45" r="5" fill="#888" stroke="#666" stroke-width="1"/>
+    <line x1="170" y1="22" x2="180" y2="22" stroke="#888" stroke-width="2"/>
+    <line x1="170" y1="68" x2="180" y2="68" stroke="#888" stroke-width="2"/>
+    <text x="100" y="82" text-anchor="middle" font-size="9" fill="#555">Forceps</text>
+  </svg>`,
+
+  "Nail": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="15" y="33" width="155" height="14" rx="4" fill="#c0c0c0" stroke="#888" stroke-width="1"/>
+    <circle cx="22" cy="40" r="12" fill="#bbb" stroke="#888" stroke-width="1"/>
+    <polygon points="170,33 190,40 170,47" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Intramedullary Nail</text>
+  </svg>`,
+
+  "Bone Pins & Wires": `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+    <line x1="10" y1="28" x2="185" y2="28" stroke="#c0c0c0" stroke-width="4" stroke-linecap="round"/>
+    <line x1="10" y1="40" x2="185" y2="40" stroke="#c0c0c0" stroke-width="3" stroke-linecap="round"/>
+    <line x1="10" y1="52" x2="185" y2="52" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round"/>
+    <polygon points="182,25 192,28 182,31" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <polygon points="182,37 192,40 182,43" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <polygon points="182,49 192,52 182,55" fill="#aaa" stroke="#777" stroke-width="1"/>
+    <text x="100" y="70" text-anchor="middle" font-size="9" fill="#555">Bone Pins &amp; Wires</text>
+  </svg>`,
+};
+
+const instruments = [
+  { name:"Osteotome", fn:"Cuts and prepares bone; double-bevelled, driven by a mallet", cat:"Cutting" },
+  { name:"Bone-Cutting Forceps", fn:"Cuts and removes bone segments during surgery", cat:"Cutting" },
+  { name:"Chisel", fn:"Single-bevelled; splits bone when mallet-driven", cat:"Cutting" },
+  { name:"Gouge", fn:"Curved chisel that scoops out bone tissue", cat:"Cutting" },
+  { name:"Mallet", fn:"Surgical hammer that strikes chisels, osteotomes, and impactors", cat:"Cutting" },
+  { name:"Bone Rongeur", fn:"Bites away small fragments of bone or cartilage", cat:"Cutting" },
+  { name:"Saw", fn:"Cuts bone using oscillating motion in arthroplasty or amputation", cat:"Cutting" },
+  { name:"Shears", fn:"Cuts through dense bone or tissue using scissor-like action", cat:"Cutting" },
+  { name:"Plate Bender", fn:"Bends fixation plates to match bone contour in fracture surgery", cat:"Fixation" },
+  { name:"Bone Holding Forceps", fn:"Grasps and holds bone fragments firmly during fixation", cat:"Fixation" },
+  { name:"Clamp", fn:"Secures bone or tissue during surgical repair", cat:"Fixation" },
+  { name:"Wire Bender", fn:"Shapes orthopaedic wires for cerclage or fixation", cat:"Fixation" },
+  { name:"Screwdriver", fn:"Drives screws into bone for plate or implant fixation", cat:"Fixation" },
+  { name:"Impactor", fn:"Drives implants or prostheses into position using controlled force", cat:"Fixation" },
+  { name:"Cup Pusher", fn:"Seats the acetabular cup during hip replacement", cat:"Fixation" },
+  { name:"Pliers", fn:"Bends or grips wires and small implants with controlled force", cat:"Fixation" },
+  { name:"Driver", fn:"Drives pins, nails, or fixation devices into bone", cat:"Fixation" },
+  { name:"Drill", fn:"Creates pilot holes in bone for screws, wires, or implants", cat:"Access" },
+  { name:"Chuck", fn:"Holds drill bits or wires firmly in a hand drill", cat:"Access" },
+  { name:"Pin Chuck", fn:"Specifically holds Kirschner wires or pins for insertion", cat:"Access" },
+  { name:"Retractor", fn:"Holds back soft tissue to expose the surgical field", cat:"Exposure" },
+  { name:"Bone Lever", fn:"Levers and displaces bone to improve surgical access", cat:"Exposure" },
+  { name:"Hook", fn:"Retracts or manipulates soft tissue, tendons, or vessels", cat:"Exposure" },
+  { name:"Elevator", fn:"Lifts and strips periosteum from bone surface for exposure", cat:"Exposure" },
+  { name:"Rugine", fn:"Scrapes and elevates periosteum off bone (raspatory)", cat:"Exposure" },
+  { name:"Spreader", fn:"Widens joint spaces or tissue gaps for access or implant seating", cat:"Exposure" },
+  { name:"Dissecting Forceps", fn:"Grasps and manipulates tissue during dissection", cat:"Exposure" },
+  { name:"Curette", fn:"Scoops out tissue, bone cysts, or necrotic material from a cavity", cat:"Debridement" },
+  { name:"Rasp", fn:"Files and smooths bone surfaces, especially in joint replacement", cat:"Debridement" },
+  { name:"File", fn:"Smooths rough bone edges after cutting", cat:"Debridement" },
+  { name:"Scoop", fn:"Removes loose material or debris from a bony cavity", cat:"Debridement" },
+  { name:"Extractor", fn:"Removes nails, screws, or implants from bone", cat:"Removal" },
+  { name:"Wire Cutter", fn:"Cuts cerclage or Kirschner wires flush to bone", cat:"Removal" },
+  { name:"Mole Grip", fn:"Self-locking grip for extracting wires or small implants", cat:"Removal" },
+  { name:"Gauge", fn:"Measures bone dimensions or screw depth intraoperatively", cat:"Measurement" },
+  { name:"Ruler", fn:"Measures bone or implant lengths intraoperatively", cat:"Measurement" },
+  { name:"Probe", fn:"Explores cavities, bone tunnels, or tract depths", cat:"Measurement" },
+  { name:"Bohler Stirrup", fn:"Suspends the limb under skeletal traction for fracture management", cat:"Positioning" },
+  { name:"Suture Scissors", fn:"Cuts sutures during wound closure at the end of a case", cat:"Closure" },
+  { name:"Forceps", fn:"General-purpose grasping and tissue-handling instrument", cat:"General" },
+  { name:"Nail", fn:"Intramedullary rod inserted into bone canal to stabilise fractures", cat:"Fixation" },
+  { name:"Bone Pins & Wires", fn:"Temporary or permanent fixation of small bone fragments (e.g. K-wires)", cat:"Fixation" },
+];
+
+const TOTAL = 10;
+let mode = "img2name", session = [], cur = 0, score = 0, answered = false, results = [];
+
+function shuffle(a) { return [...a].sort(() => Math.random() - 0.5); }
+
+function init() {
+  session = shuffle(instruments).slice(0, TOTAL);
+  cur = 0; score = 0; answered = false; results = [];
+  window._chosen = null;
+  render();
+}
+
+function setMode(m) { mode = m; render(); }
+
+function render() {
+  const app = document.getElementById("app");
+  if (cur >= TOTAL) { renderDone(app); return; }
+  const it = session[cur];
+  const pct = Math.round((cur / TOTAL) * 100);
+
+  const tabs = [
+    { id:"img2name", label:"Image → Name" },
+    { id:"name2img", label:"Name → Image" }
+  ].map(t => `<button class="tab${mode===t.id?" on":""}" onclick="setMode('${t.id}')">${t.label}</button>`).join("");
+
+  const dots = results.map(r=>`<div class="dot ${r?"ok":"miss"}"></div>`).join("") +
+    Array(TOTAL-results.length).fill('<div class="dot"></div>').join("");
+
+  const distractors = shuffle(instruments.filter(x=>x.name!==it.name)).slice(0,3);
+  const opts4 = shuffle([it, ...distractors]);
+
+  let content = "";
+
+  if (mode === "img2name") {
+    const btns = opts4.map(o => {
+      let cls = "text-opt";
+      let dis = "";
+      if (answered) {
+        dis = "disabled";
+        if (o.name===it.name) cls+=" right";
+        else if (o.name===window._chosen && o.name!==it.name) cls+=" wrong";
+      }
+      return `<button class="${cls}" ${dis} onclick="pick('${o.name.replace(/'/g,"\\'")}')">${o.name}</button>`;
+    }).join("");
+
+    let fb = answered ? `<div class="feedback ${window._chosen===it.name?"right":"wrong"}">${window._chosen===it.name?"✓ Correct!":"✗ That's"} <strong>${it.name}</strong> — ${it.fn}</div>` : "";
+
+    content = `
+      <div class="card">
+        <div class="big-img-wrap">
+          ${SVG[it.name] || ""}
+          <div class="cat-pill">${it.cat}</div>
+        </div>
+        <div class="body">
+          <div class="q-label">What instrument is this?</div>
+          <div class="text-opts">${btns}</div>
+          ${fb}
+          ${answered ? `<button class="next-btn" onclick="next()">Next →</button>` : ""}
+        </div>
+      </div>`;
+  } else {
+    const imgBtns = opts4.map(o => {
+      let cls = "img-opt";
+      let onclick = `onclick="pickImg('${o.name.replace(/'/g,"\\'")}')"`;
+      let tick = "";
+      if (answered) {
+        cls += " locked";
+        onclick = "";
+        if (o.name===it.name) { cls+=" right"; tick=`<div class="img-tick">✓</div>`; }
+        else if (o.name===window._chosen && o.name!==it.name) { cls+=" wrong"; tick=`<div class="img-tick">✗</div>`; }
+      }
+      return `<div class="${cls}" ${onclick}>${SVG[o.name]||""}${tick}</div>`;
+    }).join("");
+
+    let fb = answered ? `<div class="feedback ${window._chosen===it.name?"right":"wrong"}">${window._chosen===it.name?"✓ Correct!":"✗ That's"} <strong>${it.name}</strong> — ${it.fn}</div>` : "";
+
+    content = `
+      <div class="q-card">
+        <span class="cat-pill" style="position:static;margin-bottom:8px;display:inline-block">${it.cat}</span>
+        <div class="q-label">Which image shows this instrument?</div>
+        <div class="q-text">${it.name}</div>
+        <div class="q-fn">${it.fn}</div>
+      </div>
+      <div class="img-opts">${imgBtns}</div>
+      ${fb}
+      ${answered ? `<button class="next-btn" onclick="next()">Next →</button>` : ""}`;
+  }
+
+  app.innerHTML = `
+    <div class="header">
+      <div class="header-left"><h1>Ortho Instrument Drill</h1><p>Surgical Holdings · 42 instruments</p></div>
+      <div class="score-right"><div class="score-num">${score}/${cur}</div><div class="score-sub">Q${cur+1} of ${TOTAL}</div></div>
+    </div>
+    <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="streak-row">${dots}</div>
+    <div class="mode-row">${tabs}</div>
+    ${content}
+  `;
+}
+
+function pick(name) {
+  if (answered) return;
+  answered = true; window._chosen = name;
+  const ok = name===session[cur].name;
+  if (ok) score++;
+  results.push(ok);
+  render();
+}
+
+function pickImg(name) {
+  if (answered) return;
+  answered = true; window._chosen = name;
+  const ok = name===session[cur].name;
+  if (ok) score++;
+  results.push(ok);
+  render();
+}
+
+function next() {
+  cur++; answered = false; window._chosen = null;
+  render();
+}
+
+function renderDone(app) {
+  const pct = Math.round((score/TOTAL)*100);
+  const msg = pct===100 ? "Perfect score. Scrubbed in." : pct>=70 ? "Solid session — keep drilling." : "Keep at it, it'll click soon.";
+  const dots = results.map(r=>`<div class="dot ${r?"ok":"miss"}"></div>`).join("");
+  app.innerHTML = `
+    <div class="header"><div class="header-left"><h1>Ortho Instrument Drill</h1><p>Surgical Holdings · 42 instruments</p></div></div>
+    <div class="streak-row" style="margin-bottom:20px">${dots}</div>
+    <div class="done-card">
+      <div class="done-big">${score}/${TOTAL}</div>
+      <div class="done-pct">${pct}% correct today</div>
+      <div class="done-msg">${msg}</div>
+      <button class="restart" onclick="init()">↺ New session</button>
+    </div>
+  `;
+}
+
+init();
+</script>
+</body>
+</html>
